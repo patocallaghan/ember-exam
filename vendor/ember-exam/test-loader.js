@@ -43,10 +43,37 @@ jQuery(document).ready(function() {
 
     var splitModules = splitTestModules(testLoader._testModules, split, partition);
 
-    splitModules.forEach(function(moduleName) {
-      _super.require.call(testLoader, moduleName);
-      _super.unsee.call(testLoader, moduleName);
-    });
+    if (!params._calibrate) {
+      splitModules.forEach(this._requireUnsee.bind(this));
+    } else {
+      var currentModule = splitModules.shift();
+      var testStart = Date.now();
+      var report = {};
+
+      QUnit.testDone(function() {
+        console.log('test done');
+        if (!QUnit.config.queue.length) {
+          report[currentModule] = Date.now() - testStart;
+          while (!QUnit.config.queue.length && splitModules.length) {
+            currentModule = splitModules.shift();
+            testStart = Date.now();
+            testLoader._requireUnsee(currentModule);
+          }
+        }
+      });
+
+      QUnit.done(function() {
+        console.log(splitModules.length);
+        console.log('done', report);
+      });
+
+      this._requireUnsee(currentModule);
+    }
+  };
+
+  TestLoader.prototype._requireUnsee = function(moduleName) {
+    _super.require.call(this, moduleName);
+    _super.unsee.call(this, moduleName);
   };
 
   function splitTestModules(modules, split, partition) {
